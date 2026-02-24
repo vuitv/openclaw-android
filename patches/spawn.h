@@ -17,15 +17,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-/* Try to include the real header first */
-#if __has_include(<spawn.h>)
-#include_next <spawn.h>
-#define TERMUX_HAS_REAL_SPAWN 1
-#else
-#define TERMUX_HAS_REAL_SPAWN 0
-#endif
 
-#if !TERMUX_HAS_REAL_SPAWN
 
 /* ── Minimal type definitions ─────────────────────────────────────────────── */
 
@@ -125,5 +117,5 @@ static inline int posix_spawnattr_setflags(posix_spawnattr_t *attr, short flags)
     return 0;
 }
 
-#endif /* !TERMUX_HAS_REAL_SPAWN */
+#endif /* TERMUX_SPAWN_H */
 #endif /* TERMUX_SPAWN_H */

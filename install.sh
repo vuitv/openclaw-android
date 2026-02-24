@@ -30,9 +30,7 @@ log_info() { echo -e "${CYAN}[INFO]${NC} $1"; }
 
 step() {
     echo ""
-    echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${BOLD}  [$1] $2${NC}"
-    echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 }
 
 TOTAL_STEPS=9

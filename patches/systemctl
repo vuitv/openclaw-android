@@ -1,0 +1,57 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# ============================================================================
+# systemctl stub — No-op replacement for systems without systemd
+# ============================================================================
+# OpenClaw stub — Termux does not use systemd.
+# This stub silently absorbs systemctl calls to prevent build/runtime errors.
+# ============================================================================
+
+COMMAND="${1:-}"
+SERVICE="${2:-}"
+
+case "$COMMAND" in
+    start|stop|restart|reload|enable|disable)
+        # Silently succeed
+        exit 0
+        ;;
+    status)
+        if [[ -n "$SERVICE" ]]; then
+            echo "● ${SERVICE}"
+            echo "   Active: active (running) [stub - no systemd]"
+        fi
+        exit 0
+        ;;
+    is-active)
+        echo "active"
+        exit 0
+        ;;
+    is-enabled)
+        echo "enabled"
+        exit 0
+        ;;
+    daemon-reload|reset-failed)
+        exit 0
+        ;;
+    list-units|list-unit-files)
+        echo "No systemd on Termux (stub)"
+        exit 0
+        ;;
+    --version)
+        echo "systemctl stub 1.0 (OpenClaw Android / Termux)"
+        exit 0
+        ;;
+    "")
+        echo "systemctl stub for Termux (no systemd)"
+        echo "This is a no-op stub. Termux uses termux-services instead."
+        echo ""
+        echo "To manage services in Termux, use:"
+        echo "  sv up <service>     - Start a service"
+        echo "  sv down <service>   - Stop a service"
+        echo "  sv status <service> - Check service status"
+        exit 0
+        ;;
+    *)
+        # Unknown command — silently succeed
+        exit 0
+        ;;
+esac

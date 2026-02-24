@@ -23,7 +23,7 @@ apply_all_patches() {
     mkdir -p "$INCLUDE_DIR"
 
     cp "${PATCH_DIR}/termux-compat.h" "$INCLUDE_DIR/"
-    cp "${PATCH_DIR}/spawn.h" "${INCLUDE_DIR}/spawn-compat.h"
+    cp "${PATCH_DIR}/spawn.h" "${INCLUDE_DIR}/spawn.h"
     ok "Headers installed to ${INCLUDE_DIR}"
 
     # ── 2. Fix 'ar' command (Termux uses llvm-ar) ──────────────────────

@@ -178,6 +178,10 @@ install_openclaw() {
     # Fix for koffi/cnoke build system which passes empty -j to make
     export MAKEFLAGS="-j4"
 
+    # Fix for koffi missing spawn.h on Android
+    export CFLAGS="-I${PREFIX}/include/termux"
+    export CXXFLAGS="-I${PREFIX}/include/termux"
+
     # Install OpenClaw globally
     if command -v openclaw &>/dev/null; then
         info "OpenClaw already installed, upgrading..."

@@ -5,67 +5,80 @@
 
 setup_environment() {
     local BASHRC="${HOME}/.bashrc"
-    local MARKER="# === OpenClaw Android Environment ==="
+    local MARKER_START="# >>> OpenClaw Android >>>"
+    local MARKER_END="# <<< OpenClaw Android <<<"
 
     # ── Create $PREFIX/tmp if missing ───────────────────────────────────
-    info "Ensuring temp directories..."
+    log_info "Ensuring temp directories..."
     mkdir -p "${PREFIX}/tmp"
     chmod 1777 "${PREFIX}/tmp" 2>/dev/null || true
 
     # ── Set up environment in .bashrc ───────────────────────────────────
-    info "Configuring shell environment..."
+    log_info "Configuring shell environment..."
 
     # Remove old OpenClaw block if present
-    if grep -q "$MARKER" "$BASHRC" 2>/dev/null; then
-        info "Removing old OpenClaw environment block..."
-        sed -i "/${MARKER}/,/# === End OpenClaw ===/d" "$BASHRC"
+    if grep -q "$MARKER_START" "$BASHRC" 2>/dev/null; then
+        log_info "Removing old OpenClaw environment block..."
+        sed -i "/${MARKER_START}/,/${MARKER_END}/d" "$BASHRC"
     fi
 
-    cat >> "$BASHRC" << 'ENVEOF'
-# === OpenClaw Android Environment ===
-# Termux paths
-export PREFIX="/data/data/com.termux/files/usr"
-export TMPDIR="${PREFIX}/tmp"
-export TEMP="${TMPDIR}"
-export TMP="${TMPDIR}"
+    # Detect patch directory location
+    local PATCH_DIR="${HOME}/.openclaw-android/patches"
 
-# Node.js / npm
-export NODE_OPTIONS="--require=${HOME}/openclaw-android/patches/bionic-compat.js"
+    cat >> "$BASHRC" << ENVEOF
 
-# OpenClaw
-export OPENCLAW_DATA="${HOME}/.local/share/openclaw"
-export OPENCLAW_CONFIG="${HOME}/.config/openclaw"
+$MARKER_START
+# Temp directories
+export TMPDIR="\${PREFIX}/tmp"
+export TMP="\$TMPDIR"
+export TEMP="\$TMPDIR"
 
-# Convenience aliases
+# Node.js compatibility patches
+export NODE_OPTIONS="-r $PATCH_DIR/bionic-compat.js"
+
+# Bypass systemd checks
+export CONTAINER=1
+
+# C/C++ compatibility (renameat2, RENAME_NOREPLACE)
+export CXXFLAGS="-include $PATCH_DIR/termux-compat.h"
+export CFLAGS="-include $PATCH_DIR/termux-compat.h"
+export CMAKE_CXX_FLAGS="-include $PATCH_DIR/termux-compat.h"
+export CMAKE_C_FLAGS="-include $PATCH_DIR/termux-compat.h"
+
+# node-gyp OS detection override
+export GYP_DEFINES="OS=linux android_ndk_path=''"
+
+# Fix: Skip OpenClaw's broken --disable-warning respawn on Node v24+
+export OPENCLAW_NODE_OPTIONS_READY=1
+
+# glib/vips headers for sharp builds
+export CPATH="\$PREFIX/include/glib-2.0:\$PREFIX/lib/glib-2.0/include:\$CPATH"
+
+# OpenClaw convenience aliases
 alias claw-start='tmux new-session -d -s openclaw "openclaw" 2>/dev/null || tmux attach -t openclaw'
 alias claw-stop='tmux kill-session -t openclaw 2>/dev/null'
-alias claw-log='cat ${HOME}/openclaw-android/install.log'
+alias claw-log='cat \${HOME}/.openclaw-android/install.log 2>/dev/null || echo "Log not found"'
 alias claw-update='npm install -g openclaw@latest'
 alias wakelock='termux-wake-lock'
 alias wakeunlock='termux-wake-unlock'
 
-# Path
-export PATH="${PREFIX}/bin:${HOME}/.local/bin:${PATH}"
-# === End OpenClaw ===
+# PATH
+export PATH="\$PREFIX/bin:\$HOME/.local/bin:\$PATH"
+$MARKER_END
 ENVEOF
 
-    ok ".bashrc updated"
-
-    # ── Export for current session ──────────────────────────────────────
-    export TMPDIR="${PREFIX}/tmp"
-    export TEMP="${TMPDIR}"
-    export TMP="${TMPDIR}"
-    export NODE_OPTIONS="--require=${HOME}/openclaw-android/patches/bionic-compat.js"
+    log_ok ".bashrc updated"
 
     # ── Create local bin directory ──────────────────────────────────────
     mkdir -p "${HOME}/.local/bin"
 
     # ── Wakelock hint ───────────────────────────────────────────────────
-    info "Acquiring wakelock to prevent Android from killing the process..."
+    log_info "Acquiring wakelock to prevent Android from killing the process..."
     if command -v termux-wake-lock &>/dev/null; then
-        termux-wake-lock 2>/dev/null || warn "Wakelock failed (Termux:API may not be installed)"
-        ok "Wakelock acquired"
+        termux-wake-lock 2>/dev/null || log_warn "Wakelock failed (Termux:API may not be installed)"
+        log_ok "Wakelock acquired"
     else
-        warn "termux-wake-lock not available — install Termux:API app for wakelock support"
+        log_warn "termux-wake-lock not available — install Termux:API app for wakelock support"
     fi
 }
+

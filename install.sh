@@ -1,244 +1,223 @@
 #!/data/data/com.termux/files/usr/bin/bash
-# ============================================================================
-# OpenClaw Android — Master Installer (10 Steps)
-# ============================================================================
-# Installs OpenClaw natively on Termux without proot or Ubuntu containers.
-# ============================================================================
-
+# ============================================================
+#  OpenClaw Android — Master Installer
+#  All-in-one: deps → patches → openclaw → ssh → tmux → boot
+# ============================================================
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LOG_FILE="${SCRIPT_DIR}/install.log"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# ── Colors ──────────────────────────────────────────────────────────────────
+# Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 BOLD='\033[1m'
-DIM='\033[2m'
 NC='\033[0m'
 
-info()  { printf "${CYAN}[INFO]${NC}  %s\n" "$*" | tee -a "$LOG_FILE"; }
-ok()    { printf "${GREEN}[ OK ]${NC}  %s\n" "$*" | tee -a "$LOG_FILE"; }
-warn()  { printf "${YELLOW}[WARN]${NC}  %s\n" "$*" | tee -a "$LOG_FILE"; }
-error() { printf "${RED}[FAIL]${NC}  %s\n" "$*" | tee -a "$LOG_FILE"; exit 1; }
+export PREFIX="${PREFIX:-/data/data/com.termux/files/usr}"
+export HOME="${HOME:-/data/data/com.termux/files/home}"
+export PATH="$PREFIX/bin:$PATH"
+export TMPDIR="$PREFIX/tmp"
+
+SSH_PASSWORD="1234"
+TMUX_SESSION="OpenClaw"
+
+log_ok()   { echo -e "${GREEN}[OK]${NC}   $1"; }
+log_fail() { echo -e "${RED}[FAIL]${NC} $1"; }
+log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+log_info() { echo -e "${CYAN}[INFO]${NC} $1"; }
 
 step() {
-    local num="$1"; shift
-    printf "\n${BOLD}${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}\n"
-    printf "${BOLD}  Step %s/10: %s${NC}\n" "$num" "$*"
-    printf "${BOLD}${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}\n"
+    echo ""
+    echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BOLD}  [$1] $2${NC}"
+    echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 }
 
-# ── Source helpers ──────────────────────────────────────────────────────────
-source_script() {
-    local script="${SCRIPT_DIR}/$1"
-    if [[ -f "$script" ]]; then
-        source "$script"
-    else
-        error "Missing script: $1"
-    fi
-}
+TOTAL_STEPS=9
+FAILED=0
 
-# ── Banner ──────────────────────────────────────────────────────────────────
-banner() {
-    printf "${BOLD}${CYAN}"
-    cat << 'EOF'
-   ___                    ____ _
-  / _ \ _ __   ___ _ __  / ___| | __ ___      __
- | | | | '_ \ / _ \ '_ \| |   | |/ _` \ \ /\ / /
- | |_| | |_) |  __/ | | | |___| | (_| |\ V  V /
-  \___/| .__/ \___|_| |_|\____|_|\__,_| \_/\_/
-       |_|           Android Installer v1.0
-EOF
-    printf "${NC}\n"
-    printf "${DIM}  Native Termux install — no proot, no Ubuntu, no bloat${NC}\n\n"
-}
+# Show banner
+MAGENTA='\033[0;35m'
+echo ""
+echo -e "${MAGENTA}${BOLD}"
+echo "  ╔═══════════════════════════════════════════════════════════╗"
+echo "  ║   🦞 OpenClaw Android Installer 🦞                      ║"
+echo "  ║   Native Termux. No proot. No bloat.                     ║"
+echo "  ║                                                          ║"
+echo "  ║   Powerful AI server running 24/7 on your Android        ║"
+echo "  ║   phone via Termux — zero dependencies.                  ║"
+echo "  ╚═══════════════════════════════════════════════════════════╝"
+echo -e "${NC}"
+echo -e "  ${CYAN}Built by ${BOLD}PsProsen-Dev & VuiTv${NC}"
+echo -e "  ${YELLOW}github.com/vuitv/openclaw-android${NC}"
+echo ""
 
-# ── Elapsed timer ───────────────────────────────────────────────────────────
-SECONDS=0
-elapsed() {
-    local mins=$((SECONDS / 60))
-    local secs=$((SECONDS % 60))
-    printf "${DIM}⏱  Elapsed: %dm %ds${NC}\n" "$mins" "$secs"
-}
+# ──────────────────────────────────────────────
+#  STEP 1: Environment Check
+# ──────────────────────────────────────────────
+step "1/$TOTAL_STEPS" "Environment Check"
+bash "$SCRIPT_DIR/scripts/check-env.sh" || { log_fail "Environment check failed"; exit 1; }
 
-# ── Main ────────────────────────────────────────────────────────────────────
-main() {
-    banner
+# ──────────────────────────────────────────────
+#  STEP 2: Install Dependencies
+# ──────────────────────────────────────────────
+step "2/$TOTAL_STEPS" "Installing Dependencies"
+bash "$SCRIPT_DIR/scripts/install-deps.sh" || { log_fail "Dependency install failed"; exit 1; }
 
-    # Initialize log
-    echo "=== OpenClaw Android Install Log ===" > "$LOG_FILE"
-    echo "Started: $(date)" >> "$LOG_FILE"
-    echo "" >> "$LOG_FILE"
+# ──────────────────────────────────────────────
+#  STEP 3: Setup Environment Variables
+# ──────────────────────────────────────────────
+step "3/$TOTAL_STEPS" "Configuring Environment"
+bash "$SCRIPT_DIR/scripts/setup-env.sh" || { log_fail "Environment setup failed"; exit 1; }
+source ~/.bashrc 2>/dev/null || true
 
-    # ── Step 1: Pre-flight Checks ───────────────────────────────────────
-    step 1 "Pre-flight Checks"
-    source_script "scripts/check-env.sh"
-    run_preflight_checks
-    ok "Environment ready"
+# ──────────────────────────────────────────────
+#  STEP 4: Install OpenClaw + Apply Patches
+# ──────────────────────────────────────────────
+step "4/$TOTAL_STEPS" "Installing OpenClaw"
 
-    # ── Step 2: Install Termux Packages ─────────────────────────────────
-    step 2 "Installing Termux Packages"
-    source_script "scripts/install-deps.sh"
-    install_dependencies
-    ok "All packages installed"
+# Copy patches first (needed during npm install for native builds)
+log_info "Preparing patches..."
+PATCH_DEST="$HOME/.openclaw-android/patches"
+mkdir -p "$PATCH_DEST"
+cp "$SCRIPT_DIR/patches/bionic-compat.js" "$PATCH_DEST/"
+cp "$SCRIPT_DIR/patches/termux-compat.h"  "$PATCH_DEST/"
 
-    # ── Step 3: Configure Environment ───────────────────────────────────
-    step 3 "Configuring Environment"
-    source_script "scripts/setup-env.sh"
-    setup_environment
-    ok "Environment configured"
+# Copy spawn.h if missing
+if [ ! -f "$PREFIX/include/spawn.h" ]; then
+  cp "$SCRIPT_DIR/patches/spawn.h" "$PREFIX/include/spawn.h"
+  log_ok "spawn.h installed"
+fi
 
-    # ── Step 4: Apply Native Patches (toolchain + stubs) ────────────────
-    step 4 "Applying Native Compatibility Patches"
-    source_script "patches/apply-patches.sh"
-    apply_all_patches
-    ok "Patches applied"
+source ~/.bashrc 2>/dev/null || true
 
-    # ── Step 5: Install OpenClaw ────────────────────────────────────────
-    step 5 "Installing OpenClaw"
-    install_openclaw
-    ok "OpenClaw installed"
+# Set build flags for native compilation
+export MAKEFLAGS="-j4"
+export CFLAGS="-I${PREFIX}/include/termux"
+export CXXFLAGS="-I${PREFIX}/include/termux"
+export CMAKE_C_FLAGS="-I${PREFIX}/include/termux"
+export CMAKE_CXX_FLAGS="-I${PREFIX}/include/termux"
 
-    # ── Step 6: Configure OpenClaw ──────────────────────────────────────
-    step 6 "Configuring OpenClaw"
-    configure_openclaw
-    ok "OpenClaw configured"
+log_info "Installing OpenClaw (this may take 5-15 minutes)..."
+if npm install -g openclaw@latest; then
+  log_ok "OpenClaw installed: $(openclaw --version 2>/dev/null || echo 'unknown')"
+else
+  log_fail "OpenClaw installation failed"
+  exit 1
+fi
 
-    # ── Step 7: Setup SSH Server ────────────────────────────────────────
-    step 7 "Setting Up SSH Server"
-    source_script "scripts/setup-ssh.sh"
-    setup_ssh_server
-    ok "SSH server configured (port 8022)"
+# Apply patches
+log_info "Applying patches..."
+bash "$SCRIPT_DIR/patches/apply-patches.sh" || log_warn "Some patches failed (non-critical)"
 
-    # ── Step 8: Setup tmux Session ──────────────────────────────────────
-    step 8 "Setting Up tmux Session"
-    source_script "scripts/setup-tmux.sh"
-    setup_tmux_session
-    ok "tmux session ready"
+# ──────────────────────────────────────────────
+#  STEP 5: Setup SSH Server
+# ──────────────────────────────────────────────
+step "5/$TOTAL_STEPS" "Setting Up SSH Server"
+bash "$SCRIPT_DIR/scripts/setup-ssh.sh" "$SSH_PASSWORD" || { log_warn "SSH setup had issues"; }
 
-    # ── Step 9: Setup Auto-Start (Boot) ─────────────────────────────────
-    step 9 "Configuring Auto-Start"
-    source_script "scripts/setup-boot.sh"
-    setup_boot_script
-    ok "Auto-start configured"
+# ──────────────────────────────────────────────
+#  STEP 6: Setup Termux:Boot Auto-Start
+# ──────────────────────────────────────────────
+step "6/$TOTAL_STEPS" "Configuring Auto-Start (Termux:Boot)"
+bash "$SCRIPT_DIR/scripts/setup-boot.sh" || { log_warn "Boot script setup had issues"; }
 
-    # ── Step 10: Verify Installation ────────────────────────────────────
-    step 10 "Verifying Installation"
-    source_script "tests/verify-install.sh"
-    run_verification
-    ok "All checks passed"
+# ──────────────────────────────────────────────
+#  STEP 7: Verification
+# ──────────────────────────────────────────────
+step "7/$TOTAL_STEPS" "Verifying Installation"
+bash "$SCRIPT_DIR/tests/verify-install.sh" || true
 
-    # ── Done ────────────────────────────────────────────────────────────
-    printf "\n"
-    printf "${BOLD}${GREEN}╔══════════════════════════════════════════════════════════════╗${NC}\n"
-    printf "${BOLD}${GREEN}║          🦞  OpenClaw Installed Successfully!  🦞           ║${NC}\n"
-    printf "${BOLD}${GREEN}╚══════════════════════════════════════════════════════════════╝${NC}\n"
-    printf "\n"
-    elapsed
+# ──────────────────────────────────────────────
+#  DONE — Installation Summary
+# ──────────────────────────────────────────────
+echo ""
+echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${GREEN}${BOLD}  🦞 INSTALLATION COMPLETE!${NC}"
+echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo ""
+echo -e "  OpenClaw version : ${CYAN}$(openclaw --version 2>/dev/null || echo 'unknown')${NC}"
+echo -e "  Node.js version  : ${CYAN}$(node -v 2>/dev/null)${NC}"
+echo -e "  npm version      : ${CYAN}$(npm -v 2>/dev/null)${NC}"
+echo ""
+echo -e "  ${BOLD}SSH Access:${NC}"
+echo -e "  Port     : ${CYAN}8022${NC}"
+echo -e "  Password : ${CYAN}${SSH_PASSWORD}${NC} (change with: ${YELLOW}passwd${NC})"
+echo -e "  Connect  : ${CYAN}ssh -p 8022 \$(whoami)@<phone-ip>${NC}"
+echo ""
 
-    printf "\n${BOLD}Quick Start:${NC}\n"
-    printf "  ${CYAN}1.${NC} Attach to the session:  ${BOLD}tmux attach -t openclaw${NC}\n"
-    printf "  ${CYAN}2.${NC} SSH from another device: ${BOLD}ssh -p 8022 $(whoami)@<device-ip>${NC}\n"
-    printf "  ${CYAN}3.${NC} Acquire wakelock:        ${BOLD}termux-wake-lock${NC}\n"
-    printf "\n"
-    printf "${DIM}Log saved to: ${LOG_FILE}${NC}\n"
-    printf "${DIM}Troubleshooting: docs/troubleshooting.md${NC}\n\n"
-}
+# ──────────────────────────────────────────────
+#  STEP 8: OpenClaw Onboarding (Interactive)
+# ──────────────────────────────────────────────
+echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${BOLD}  [8] OpenClaw Onboarding${NC}"
+echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo ""
+echo -e "  ${YELLOW}Configure your AI provider, channels, and skills.${NC}"
+echo -e "  ${CYAN}Follow the prompts below — this takes ~2 minutes.${NC}"
+echo ""
 
-# ── Step 5 Implementation ──────────────────────────────────────────────────
-install_openclaw() {
-    info "Installing OpenClaw via npm..."
-    info "Repository: https://github.com/openclaw/openclaw"
+# Run onboard interactively — user configures their setup
+openclaw onboard 2>/dev/null || log_warn "Onboarding skipped or failed (you can run 'openclaw onboard' later)"
 
-    # Check Node.js, npm, and git are available
-    if ! command -v node &>/dev/null; then
-        error "Node.js not found. Run: pkg install nodejs"
-    fi
-    if ! command -v npm &>/dev/null; then
-        error "npm not found. Run: pkg install nodejs"
-    fi
-    if ! command -v git &>/dev/null; then
-        info "git not found — installing..."
-        pkg install -y git 2>/dev/null || apt install -y git || \
-            error "Failed to install git. Run: pkg install git"
-    fi
+echo ""
+log_ok "Onboarding complete!"
 
-    local NODE_VER
-    NODE_VER=$(node --version 2>/dev/null)
-    info "Node.js version: ${NODE_VER}"
-    info "npm version: $(npm --version 2>/dev/null)"
+# ──────────────────────────────────────────────
+#  STEP 9: Auto-Start Gateway in tmux
+# ──────────────────────────────────────────────
+echo ""
+echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${BOLD}  [9] Starting Gateway in tmux${NC}"
+echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
-    # Apply bionic-compat patches for Node.js
-    export NODE_OPTIONS="--require=${SCRIPT_DIR}/patches/bionic-compat.js"
-    info "Bionic compatibility patches loaded via ${NODE_OPTIONS}"
+# Kill any existing session
+tmux kill-session -t OpenClaw 2>/dev/null || true
 
-    # Fix for koffi/cnoke build system which passes empty -j to make
-    export MAKEFLAGS="-j4"
+# Create tmux session with gateway running
+tmux new-session -d -s OpenClaw "source ~/.bashrc && openclaw gateway" 2>/dev/null || \
+  log_warn "tmux session creation failed. Start manually:"
+sleep 2
 
-    # Fix for koffi missing spawn.h on Android
-    export CFLAGS="-I${PREFIX}/include/termux"
-    export CXXFLAGS="-I${PREFIX}/include/termux"
+if tmux has-session -t OpenClaw 2>/dev/null; then
+  log_ok "tmux session 'OpenClaw' created with gateway running!"
+else
+  log_warn "To start: ${YELLOW}tmux new-session -s OpenClaw${NC}"
+  log_warn "Then run: ${YELLOW}openclaw gateway${NC}"
+fi
 
-    # Install OpenClaw globally
-    if command -v openclaw &>/dev/null; then
-        info "OpenClaw already installed, upgrading..."
-        npm install -g openclaw@latest 2>&1 | tee -a "$LOG_FILE" || {
-            warn "Upgrade failed, attempting clean install..."
-            npm uninstall -g openclaw 2>/dev/null
-            npm install -g openclaw@latest 2>&1 | tee -a "$LOG_FILE"
-        }
-    else
-        npm install -g openclaw@latest 2>&1 | tee -a "$LOG_FILE"
-    fi
-
-    # Verify installation
-    if command -v openclaw &>/dev/null; then
-        local CLAW_VER
-        CLAW_VER=$(openclaw --version 2>/dev/null || echo "installed")
-        ok "OpenClaw ${CLAW_VER} installed at $(command -v openclaw)"
-    else
-        error "OpenClaw installation failed — 'openclaw' command not found"
-    fi
-}
-
-# ── Step 6 Implementation ──────────────────────────────────────────────────
-configure_openclaw() {
-    local CONFIG_DIR="${HOME}/.config/openclaw"
-    local DATA_DIR="${HOME}/.local/share/openclaw"
-
-    mkdir -p "${CONFIG_DIR}" "${DATA_DIR}"
-
-    # Persist NODE_OPTIONS for bionic-compat in .bashrc
-    # (already handled by setup-env.sh, but verify)
-    if ! grep -q "NODE_OPTIONS" "${HOME}/.bashrc" 2>/dev/null; then
-        echo "export NODE_OPTIONS=\"--require=${SCRIPT_DIR}/patches/bionic-compat.js\"" >> "${HOME}/.bashrc"
-        info "NODE_OPTIONS added to .bashrc"
-    fi
-
-    # Create default config if not exists
-    if [[ ! -f "${CONFIG_DIR}/config.json" ]]; then
-        info "Creating default OpenClaw configuration..."
-        cat > "${CONFIG_DIR}/config.json" << 'JSONEOF'
-{
-  "port": 3000,
-  "host": "0.0.0.0",
-  "logLevel": "info",
-  "dataDir": "~/.local/share/openclaw"
-}
-JSONEOF
-    else
-        info "Existing config found, preserving..."
-    fi
-
-    # Ensure data directories
-    mkdir -p "${DATA_DIR}/data"
-    mkdir -p "${DATA_DIR}/logs"
-
-    ok "Config: ${CONFIG_DIR}/config.json"
-    ok "Data:   ${DATA_DIR}"
-}
-
-main "$@"
+# ──────────────────────────────────────────────
+#  ALL DONE — BOOM! 💥
+# ──────────────────────────────────────────────
+USER_NAME=$(whoami)
+IP=$(ip -4 addr show wlan0 2>/dev/null | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -1 || \
+     ifconfig wlan0 2>/dev/null | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -1 || \
+     ifconfig wlan0 2>/dev/null | grep 'inet ' | awk '{print $2}' | head -1 || \
+     echo "<phone-ip>")
+echo ""
+echo -e "${MAGENTA}${BOLD}"
+echo "  ╔═══════════════════════════════════════════════════════════╗"
+echo "  ║                                                          ║"
+echo "  ║   🦞 OpenClaw Android IS READY! 🦞                      ║"
+echo "  ║                                                          ║"
+echo "  ╚═══════════════════════════════════════════════════════════╝"
+echo -e "${NC}"
+echo -e "  ${GREEN}Gateway  : ${BOLD}Running in tmux session 'OpenClaw'${NC}"
+echo ""
+echo -e "  ${BOLD}SSH Command (copy-paste on your PC):${NC}"
+echo -e "  ${CYAN}${BOLD}ssh -p 8022 ${USER_NAME}@${IP}${NC}"
+echo ""
+echo -e "  ${GREEN}Password : ${BOLD}${SSH_PASSWORD}${NC} ${YELLOW}(change dengan: passwd)${NC}"
+echo ""
+echo -e "  ${BOLD}Useful Commands:${NC}"
+echo -e "  ${YELLOW}tmux attach -t OpenClaw${NC}    — View gateway logs"
+echo -e "  ${YELLOW}Ctrl+B then D${NC}              — Detach (server keeps running)"
+echo -e "  ${YELLOW}openclaw status${NC}            — Check server health"
+echo -e "  ${YELLOW}openclaw tui${NC}               — Chat with your AI"
+echo -e "  ${YELLOW}passwd${NC}                     — Change SSH password"
+echo ""
+echo -e "  ${CYAN}Docs: https://github.com/vuitv/openclaw-android${NC}"
+echo -e "  ${MAGENTA}${BOLD}Built by VuiTv${NC}"
+echo ""

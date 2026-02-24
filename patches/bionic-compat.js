@@ -62,6 +62,7 @@ process.env.__BIONIC = '1';
 // Intercept spawn to fix /usr/bin → $PREFIX/bin path references
 const childProcess = require('child_process');
 const originalSpawn = childProcess.spawn;
+const originalSpawnSync = childProcess.spawnSync;
 
 childProcess.spawn = function(command, args, options) {
     // Fix hardcoded /usr/bin and /usr/local/bin paths
@@ -80,7 +81,23 @@ childProcess.spawn = function(command, args, options) {
             .replace(/\/usr\/bin/g, `${PREFIX}/bin`);
     }
 
-    return originalSpawn.call(childProcess, command, args, options);
+    return originalSpawn.apply(this, arguments);
+};
+
+childProcess.spawnSync = function(command, args, options) {
+    if (typeof command === 'string') {
+        command = command
+            .replace(/^\/usr\/local\/bin\//, `${PREFIX}/bin/`)
+            .replace(/^\/usr\/bin\//, `${PREFIX}/bin/`)
+            .replace(/^\/bin\//, `${PREFIX}/bin/`)
+            .replace(/^\/sbin\//, `${PREFIX}/bin/`);
+    }
+    if (options && options.env && options.env.PATH) {
+        options.env.PATH = options.env.PATH
+            .replace(/\/usr\/local\/bin/g, `${PREFIX}/bin`)
+            .replace(/\/usr\/bin/g, `${PREFIX}/bin`);
+    }
+    return originalSpawnSync.apply(this, arguments);
 };
 
 // ── Patch /tmp references in environment ───────────────────────────────────

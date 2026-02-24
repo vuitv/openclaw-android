@@ -4,8 +4,6 @@
 # ============================================================================
 
 run_preflight_checks() {
-    local errors=0
-
     # ── Check: Running inside Termux ────────────────────────────────────
     info "Checking Termux environment..."
     if [[ -z "${PREFIX:-}" ]]; then
@@ -96,11 +94,6 @@ run_preflight_checks() {
         fi
     else
         warn "Could not detect Android version"
-    fi
-
-    # ── Summary ─────────────────────────────────────────────────────────
-    if [[ $errors -gt 0 ]]; then
-        error "${errors} pre-flight check(s) failed"
     fi
 
     ok "All pre-flight checks passed"

@@ -3,10 +3,10 @@
 # OpenClaw Android — Bootstrap Installer
 # ============================================================================
 # Usage (curl one-liner):
-#   curl -fsSL https://raw.githubusercontent.com/user/openclaw-android/main/bootstrap.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/vuitv/openclaw-android/refs/heads/master/bootstrap.sh | bash
 #
 # Or clone and run:
-#   git clone https://github.com/user/openclaw-android.git
+#   git clone https://github.com/vuitv/openclaw-android.git
 #   cd openclaw-android && bash bootstrap.sh
 # ============================================================================
 
@@ -49,7 +49,7 @@ main() {
     fi
 
     INSTALL_DIR="${HOME}/openclaw-android"
-    REPO_URL="https://github.com/user/openclaw-android.git"
+    REPO_URL="https://github.com/vuitv/openclaw-android.git"
 
     # If running from a pipe (curl | bash), clone the repo first
     if [[ ! -f "install.sh" ]]; then

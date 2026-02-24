@@ -91,7 +91,7 @@ main() {
     setup_environment
     ok "Environment configured"
 
-    # ── Step 4: Apply Native Patches ────────────────────────────────────
+    # ── Step 4: Apply Native Patches (toolchain + stubs) ────────────────
     step 4 "Applying Native Compatibility Patches"
     source_script "patches/apply-patches.sh"
     apply_all_patches
@@ -150,46 +150,46 @@ main() {
 
 # ── Step 5 Implementation ──────────────────────────────────────────────────
 install_openclaw() {
-    local OPENCLAW_DIR="${HOME}/openclaw"
+    info "Installing OpenClaw via npm..."
+    info "Repository: https://github.com/openclaw/openclaw"
 
-    if [[ -d "${OPENCLAW_DIR}" ]]; then
-        info "Existing OpenClaw directory found, updating..."
-        cd "${OPENCLAW_DIR}"
-        git pull --ff-only 2>/dev/null || {
-            warn "Pull failed — performing clean reinstall"
-            cd "${HOME}"
-            rm -rf "${OPENCLAW_DIR}"
-            git clone https://github.com/nicholasgasior/OpenClaw.git "${OPENCLAW_DIR}"
-            cd "${OPENCLAW_DIR}"
-        }
-    else
-        info "Cloning OpenClaw repository..."
-        git clone https://github.com/nicholasgasior/OpenClaw.git "${OPENCLAW_DIR}"
-        cd "${OPENCLAW_DIR}"
+    # Check Node.js and npm are available
+    if ! command -v node &>/dev/null; then
+        error "Node.js not found. Run: pkg install nodejs"
+    fi
+    if ! command -v npm &>/dev/null; then
+        error "npm not found. Run: pkg install nodejs"
     fi
 
-    info "Building OpenClaw..."
+    local NODE_VER
+    NODE_VER=$(node --version 2>/dev/null)
+    info "Node.js version: ${NODE_VER}"
+    info "npm version: $(npm --version 2>/dev/null)"
 
-    # Create build directory
-    mkdir -p build && cd build
+    # Apply bionic-compat patches for Node.js
+    export NODE_OPTIONS="--require=${SCRIPT_DIR}/patches/bionic-compat.js"
+    info "Bionic compatibility patches loaded via NODE_OPTIONS"
 
-    # Configure with Termux-compatible flags
-    cmake .. \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
-        -DCMAKE_C_FLAGS="-I${SCRIPT_DIR}/patches -Wno-error" \
-        -DCMAKE_CXX_FLAGS="-I${SCRIPT_DIR}/patches -Wno-error" \
-        2>&1 | tee -a "$LOG_FILE"
+    # Install OpenClaw globally
+    if command -v openclaw &>/dev/null; then
+        info "OpenClaw already installed, upgrading..."
+        npm install -g openclaw@latest 2>&1 | tee -a "$LOG_FILE" || {
+            warn "Upgrade failed, attempting clean install..."
+            npm uninstall -g openclaw 2>/dev/null
+            npm install -g openclaw@latest 2>&1 | tee -a "$LOG_FILE"
+        }
+    else
+        npm install -g openclaw@latest 2>&1 | tee -a "$LOG_FILE"
+    fi
 
-    # Build with available cores (leave 1 free)
-    local JOBS=$(( $(nproc) > 1 ? $(nproc) - 1 : 1 ))
-    info "Building with ${JOBS} parallel jobs..."
-    make -j"${JOBS}" 2>&1 | tee -a "$LOG_FILE"
-
-    # Install
-    make install 2>&1 | tee -a "$LOG_FILE"
-
-    cd "${SCRIPT_DIR}"
+    # Verify installation
+    if command -v openclaw &>/dev/null; then
+        local CLAW_VER
+        CLAW_VER=$(openclaw --version 2>/dev/null || echo "installed")
+        ok "OpenClaw ${CLAW_VER} installed at $(command -v openclaw)"
+    else
+        error "OpenClaw installation failed — 'openclaw' command not found"
+    fi
 }
 
 # ── Step 6 Implementation ──────────────────────────────────────────────────
@@ -199,37 +199,33 @@ configure_openclaw() {
 
     mkdir -p "${CONFIG_DIR}" "${DATA_DIR}"
 
+    # Persist NODE_OPTIONS for bionic-compat in .bashrc
+    # (already handled by setup-env.sh, but verify)
+    if ! grep -q "NODE_OPTIONS" "${HOME}/.bashrc" 2>/dev/null; then
+        echo "export NODE_OPTIONS=\"--require=${SCRIPT_DIR}/patches/bionic-compat.js\"" >> "${HOME}/.bashrc"
+        info "NODE_OPTIONS added to .bashrc"
+    fi
+
     # Create default config if not exists
-    if [[ ! -f "${CONFIG_DIR}/config.xml" ]]; then
+    if [[ ! -f "${CONFIG_DIR}/config.json" ]]; then
         info "Creating default OpenClaw configuration..."
-        cat > "${CONFIG_DIR}/config.xml" << 'XMLEOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<Configuration>
-    <Display>
-        <Width>800</Width>
-        <Height>600</Height>
-        <Fullscreen>false</Fullscreen>
-    </Display>
-    <Audio>
-        <Frequency>44100</Frequency>
-        <SoundVolume>50</SoundVolume>
-        <MusicVolume>50</MusicVolume>
-    </Audio>
-    <Assets>
-        <RezArchive></RezArchive>
-        <ResourceCacheSize>50</ResourceCacheSize>
-    </Assets>
-</Configuration>
-XMLEOF
+        cat > "${CONFIG_DIR}/config.json" << 'JSONEOF'
+{
+  "port": 3000,
+  "host": "0.0.0.0",
+  "logLevel": "info",
+  "dataDir": "~/.local/share/openclaw"
+}
+JSONEOF
     else
         info "Existing config found, preserving..."
     fi
 
     # Ensure data directories
-    mkdir -p "${DATA_DIR}/saves"
-    mkdir -p "${DATA_DIR}/assets"
+    mkdir -p "${DATA_DIR}/data"
+    mkdir -p "${DATA_DIR}/logs"
 
-    ok "Config: ${CONFIG_DIR}/config.xml"
+    ok "Config: ${CONFIG_DIR}/config.json"
     ok "Data:   ${DATA_DIR}"
 }
 

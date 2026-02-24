@@ -14,7 +14,6 @@
 
 const os = require('os');
 const path = require('path');
-const Module = require('module');
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const PREFIX = process.env.PREFIX || '/data/data/com.termux/files/usr';

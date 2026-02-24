@@ -3,25 +3,19 @@
 # Install Dependencies — All required Termux packages
 # ============================================================================
 
-# Core packages required for building and running OpenClaw
+# Core packages required for running OpenClaw
 CORE_PACKAGES=(
-    build-essential
-    cmake
+    nodejs
     git
-    pkg-config
     wget
     curl
 )
 
-# Libraries required by OpenClaw
-LIB_PACKAGES=(
-    libsdl2
-    libsdl2-image
-    libsdl2-mixer
-    libsdl2-ttf
-    libsdl2-gfx
-    zlib
-    tinyxml2
+# Build tools (needed for native npm modules)
+BUILD_PACKAGES=(
+    build-essential
+    python3
+    pkg-config
 )
 
 # Infrastructure packages
@@ -48,14 +42,14 @@ install_dependencies() {
     pkg upgrade -y 2>&1 | tail -3 | tee -a "${LOG_FILE:-/dev/null}"
 
     # ── Core packages ───────────────────────────────────────────────────
-    info "Installing core build tools..."
+    info "Installing core packages (Node.js, git, curl)..."
     for pkg_name in "${CORE_PACKAGES[@]}"; do
         install_pkg "$pkg_name"
     done
 
-    # ── Library packages ────────────────────────────────────────────────
-    info "Installing OpenClaw libraries..."
-    for pkg_name in "${LIB_PACKAGES[@]}"; do
+    # ── Build packages (for native npm modules) ─────────────────────────
+    info "Installing build tools for native modules..."
+    for pkg_name in "${BUILD_PACKAGES[@]}"; do
         install_pkg "$pkg_name"
     done
 
@@ -73,7 +67,7 @@ install_dependencies() {
 
     # ── Verify critical tools ───────────────────────────────────────────
     info "Verifying critical tools..."
-    local CRITICAL_CMDS=(gcc g++ cmake git ssh tmux make)
+    local CRITICAL_CMDS=(node npm git ssh tmux)
     for cmd in "${CRITICAL_CMDS[@]}"; do
         if command -v "$cmd" &>/dev/null; then
             ok "  ${cmd}: $(command -v "$cmd")"

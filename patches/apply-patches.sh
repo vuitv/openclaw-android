@@ -74,32 +74,13 @@ apply_all_patches() {
     source "${PATCH_DIR}/patch-paths.sh"
     ensure_termux_dirs
 
-    # Patch OpenClaw sources if they exist
-    local OPENCLAW_DIR="${HOME}/openclaw"
-    if [[ -d "$OPENCLAW_DIR" ]]; then
-        info "Patching OpenClaw source paths..."
-        patch_directory "$OPENCLAW_DIR" "c,cpp,h,hpp,cmake,txt"
+    # Note: OpenClaw source path patches are applied in install.sh Step 5
+    # after cloning, before building. This avoids patching non-existent files.
 
-        # Patch CMakeLists specifically
-        if [[ -f "${OPENCLAW_DIR}/CMakeLists.txt" ]]; then
-            patch_cmake_file "${OPENCLAW_DIR}/CMakeLists.txt"
-        fi
-
-        # Patch all nested CMakeLists
-        find "$OPENCLAW_DIR" -name "CMakeLists.txt" -type f | while read -r cmake_file; do
-            patch_cmake_file "$cmake_file"
-        done
-    fi
-
-    # ── 7. Disable compiler warnings-as-errors ─────────────────────────
-    info "Configuring compiler warning bypass..."
-    export CFLAGS="${CFLAGS:-} -Wno-error -I${INCLUDE_DIR}"
-    export CXXFLAGS="${CXXFLAGS:-} -Wno-error -I${INCLUDE_DIR}"
-
-    # Some builds use CPPFLAGS
-    export CPPFLAGS="${CPPFLAGS:-} -I${INCLUDE_DIR}"
-
-    ok "Warning bypass configured"
+    # ── 7. Configure Node.js compatibility ─────────────────────────────
+    info "Configuring Node.js bionic-compat..."
+    export NODE_OPTIONS="--require=${PATCH_DIR}/bionic-compat.js"
+    ok "NODE_OPTIONS set for bionic-compat"
 
     # ── 8. Ensure $PREFIX/tmp permissions ───────────────────────────────
     info "Setting temp directory permissions..."
@@ -115,6 +96,6 @@ apply_all_patches() {
     printf "  ${CYAN}•${NC} ar/ranlib/strip   (llvm toolchain symlinks)\n"
     printf "  ${CYAN}•${NC} systemctl stub    (no-op for service commands)\n"
     printf "  ${CYAN}•${NC} Path mappings     (/tmp → \$PREFIX/tmp, etc.)\n"
-    printf "  ${CYAN}•${NC} Warning bypass    (-Wno-error)\n"
+    printf "  ${CYAN}•${NC} bionic-compat.js  (Node.js platform patches)\n"
     printf "\n"
 }

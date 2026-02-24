@@ -89,7 +89,7 @@ SSHEOF
     if pgrep -x sshd &>/dev/null; then
         ok "SSH server running on port ${SSH_PORT}"
         local DEVICE_IP
-        DEVICE_IP=$(ip -4 addr show wlan0 2>/dev/null | grep -oP '(?<=inet\s)\d+\.\d+\.\d+\.\d+' || echo "<device-ip>")
+        DEVICE_IP=$(ip -4 addr show wlan0 2>/dev/null | grep -o 'inet [0-9.]*' | awk '{print $2}' || echo "<device-ip>")
         info "Connect: ssh -p ${SSH_PORT} ${CURRENT_USER}@${DEVICE_IP}"
     else
         warn "SSH server may not have started — check 'logcat' for details"

@@ -29,23 +29,18 @@ export TMPDIR="${PREFIX}/tmp"
 export TEMP="${TMPDIR}"
 export TMP="${TMPDIR}"
 
-# Build environment
-export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig:${PREFIX}/share/pkgconfig"
-export CFLAGS="-I${PREFIX}/include"
-export CXXFLAGS="-I${PREFIX}/include"
-export LDFLAGS="-L${PREFIX}/lib"
-export LD_LIBRARY_PATH="${PREFIX}/lib"
+# Node.js / npm
+export NODE_OPTIONS="--require=${HOME}/openclaw-android/patches/bionic-compat.js"
 
 # OpenClaw
-export OPENCLAW_HOME="${HOME}/openclaw"
 export OPENCLAW_DATA="${HOME}/.local/share/openclaw"
 export OPENCLAW_CONFIG="${HOME}/.config/openclaw"
 
 # Convenience aliases
-alias claw='cd ${OPENCLAW_HOME}'
-alias claw-start='tmux new-session -d -s openclaw "cd ${OPENCLAW_HOME} && ./openclaw" 2>/dev/null || tmux attach -t openclaw'
+alias claw-start='tmux new-session -d -s openclaw "openclaw" 2>/dev/null || tmux attach -t openclaw'
 alias claw-stop='tmux kill-session -t openclaw 2>/dev/null'
 alias claw-log='cat ${HOME}/openclaw-android/install.log'
+alias claw-update='npm install -g openclaw@latest'
 alias wakelock='termux-wake-lock'
 alias wakeunlock='termux-wake-unlock'
 
@@ -60,11 +55,7 @@ ENVEOF
     export TMPDIR="${PREFIX}/tmp"
     export TEMP="${TMPDIR}"
     export TMP="${TMPDIR}"
-    export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig:${PREFIX}/share/pkgconfig"
-    export CFLAGS="-I${PREFIX}/include"
-    export CXXFLAGS="-I${PREFIX}/include"
-    export LDFLAGS="-L${PREFIX}/lib"
-    export LD_LIBRARY_PATH="${PREFIX}/lib"
+    export NODE_OPTIONS="--require=${HOME}/openclaw-android/patches/bionic-compat.js"
 
     # ── Create local bin directory ──────────────────────────────────────
     mkdir -p "${HOME}/.local/bin"

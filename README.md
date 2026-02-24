@@ -1,6 +1,6 @@
 # 🦞 OpenClaw Android
 
-An enhanced, battle-tested installer for [OpenClaw](https://github.com/nicholasgasior/OpenClaw) on Android via **Termux**. Runs natively — no proot, no Ubuntu, no bloat.
+An enhanced, battle-tested installer for [OpenClaw](https://github.com/openclaw/openclaw) on Android via **Termux**. Runs natively — no proot, no Ubuntu, no bloat.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -24,7 +24,7 @@ An enhanced, battle-tested installer for [OpenClaw](https://github.com/nicholasg
 ### One-liner install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/vuitv/openclaw-android/main/bootstrap.sh | bash
+curl -fsSL https://raw.githubusercontent.com/vuitv/openclaw-android/refs/heads/master/bootstrap.sh | bash
 ```
 
 ### Or clone & run
@@ -46,10 +46,10 @@ The master installer runs **10 automated steps**:
 | Step | Action |
 |------|--------|
 | 1 | **Pre-flight checks** — arch, disk space, network, package manager |
-| 2 | **Install packages** — build tools, SDL2 libs, SSH, tmux |
+| 2 | **Install packages** — Node.js, npm, build tools, SSH, tmux |
 | 3 | **Configure environment** — `.bashrc`, `$TMPDIR`, wakelock |
-| 4 | **Apply native patches** — `renameat2` shim, `ar` symlink, `-Wno-error` |
-| 5 | **Install OpenClaw** — clone, cmake, build |
+| 4 | **Apply native patches** — bionic-compat, systemctl stub, path fixes |
+| 5 | **Install OpenClaw** — `npm install -g openclaw@latest` |
 | 6 | **Configure OpenClaw** — default config + data directories |
 | 7 | **Setup SSH** — sshd on port 8022, password config |
 | 8 | **Setup tmux** — persistent `openclaw` session |
@@ -119,16 +119,16 @@ openclaw-android/
 
 ## Native Compatibility Patches
 
-OpenClaw targets desktop Linux (glibc). Termux runs on Android's **Bionic** libc, which requires several fixes:
+OpenClaw is an npm package targeting desktop Linux (glibc). Termux runs on Android's **Bionic** libc, which requires several fixes:
 
 | Patch | Problem | Solution |
 |-------|---------|----------|
-| `termux-compat.h` | `renameat2()` missing in Bionic | Syscall shim with `RENAME_NOREPLACE` fallback |
+| `bionic-compat.js` | Node.js `os.tmpdir()`, `os.homedir()`, `os.userInfo()` wrong on Bionic | Runtime monkey-patches via `NODE_OPTIONS --require` |
+| `bionic-compat.js` | `child_process.spawn` uses `/usr/bin` paths | Intercepts and rewrites to `$PREFIX/bin` |
+| `termux-compat.h` | `renameat2()` missing in Bionic | Syscall shim (for native npm modules) |
 | `spawn.h` | `posix_spawn` incomplete on old NDK | Fork+exec fallback stubs |
-| `ar` symlink | Termux ships `llvm-ar`, not GNU `ar` | Create `ar` → `llvm-ar` symlink |
 | `patch-paths.sh` | Hardcoded `/tmp`, `/usr` paths | Rewrite to `$PREFIX/tmp`, `$PREFIX/*` |
 | `systemctl` stub | No systemd on Android | No-op stub that silently succeeds |
-| `-Wno-error` | Warnings treated as errors | Inject `-Wno-error` into CFLAGS/CXXFLAGS |
 
 ---
 
@@ -136,7 +136,7 @@ OpenClaw targets desktop Linux (glibc). Termux runs on Android's **Bionic** libc
 
 - **Android 7+** (ARM64 recommended)
 - **Termux** — [F-Droid version](https://f-droid.org/packages/com.termux/) (Play Store version is deprecated)
-- **~500MB** free disk space
+- **~300MB** free disk space
 - **Internet connection** for initial install
 
 ### Optional (recommended)
@@ -162,8 +162,8 @@ This checks 8 categories: environment, commands, libraries, OpenClaw binary, SSH
 
 See the full [Troubleshooting Guide](docs/troubleshooting.md) for solutions to common issues:
 
-- Build errors (`renameat2`, `ar`, `spawn.h`, SDL2)
-- Runtime crashes and missing assets
+- npm install errors and native module compilation
+- Runtime crashes and Node.js compatibility
 - SSH connection problems
 - Android killing background processes
 - Performance tuning
@@ -185,7 +185,8 @@ See the [SSH Guide](docs/ssh-guide.md) for:
 
 ```bash
 # Remove OpenClaw
-rm -rf ~/openclaw ~/.config/openclaw ~/.local/share/openclaw
+npm uninstall -g openclaw
+rm -rf ~/.config/openclaw ~/.local/share/openclaw
 
 # Remove installer
 rm -rf ~/openclaw-android

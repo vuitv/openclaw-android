@@ -54,7 +54,7 @@ run_verification() {
     # ── 2. Required commands ───────────────────────────────────────────
     printf "\n${CYAN}[Required Commands]${NC}\n"
 
-    local REQUIRED_CMDS=(gcc g++ cmake git make ssh sshd tmux pkg-config)
+    local REQUIRED_CMDS=(node npm git ssh sshd tmux)
     for cmd in "${REQUIRED_CMDS[@]}"; do
         if command -v "$cmd" &>/dev/null; then
             check_pass "${cmd}: $(command -v "$cmd")"
@@ -63,55 +63,68 @@ run_verification() {
         fi
     done
 
-    # ── 3. Libraries ───────────────────────────────────────────────────
-    printf "\n${CYAN}[Libraries]${NC}\n"
+    # ── 3. Node.js Environment ──────────────────────────────────────────
+    printf "\n${CYAN}[Node.js Environment]${NC}\n"
 
-    local REQUIRED_LIBS=(sdl2 SDL2_image SDL2_mixer SDL2_ttf SDL2_gfx tinyxml2 zlib)
-    for lib in "${REQUIRED_LIBS[@]}"; do
-        if pkg-config --exists "$lib" 2>/dev/null; then
-            local ver
-            ver=$(pkg-config --modversion "$lib" 2>/dev/null || echo "?")
-            check_pass "${lib}: ${ver}"
-        else
-            # Try alternate names
-            local alt_lib=$(echo "$lib" | tr '[:upper:]' '[:lower:]')
-            if pkg-config --exists "$alt_lib" 2>/dev/null; then
-                check_pass "${lib} (as ${alt_lib})"
-            else
-                check_warn "${lib}: not found via pkg-config (may still work)"
-            fi
-        fi
-    done
+    local NPM_ROOT
+    NPM_ROOT=$(npm root -g 2>/dev/null || echo "unknown")
+    if [[ "$NPM_ROOT" != "unknown" ]]; then
+        check_pass "npm global root: ${NPM_ROOT}"
+    else
+        check_warn "Could not determine npm global root"
+    fi
+
+    if [[ -n "${NODE_OPTIONS:-}" ]]; then
+        check_pass "NODE_OPTIONS set: ${NODE_OPTIONS}"
+    else
+        check_warn "NODE_OPTIONS not set (bionic-compat may not be loaded)"
+    fi
+
+    # Check bionic-compat.js exists
+    local COMPAT_JS="${HOME}/openclaw-android/patches/bionic-compat.js"
+    if [[ -f "$COMPAT_JS" ]]; then
+        check_pass "bionic-compat.js: ${COMPAT_JS}"
+    else
+        check_warn "bionic-compat.js not found"
+    fi
 
     # ── 4. OpenClaw ────────────────────────────────────────────────────
     printf "\n${CYAN}[OpenClaw]${NC}\n"
 
-    local OPENCLAW_DIR="${HOME}/openclaw"
-    if [[ -d "$OPENCLAW_DIR" ]]; then
-        check_pass "Source directory: ${OPENCLAW_DIR}"
+    # Check Node.js & npm
+    if command -v node &>/dev/null; then
+        check_pass "Node.js: $(node --version 2>/dev/null)"
     else
-        check_fail "Source directory missing: ${OPENCLAW_DIR}"
+        check_fail "Node.js: NOT FOUND"
     fi
 
-    if [[ -d "${OPENCLAW_DIR}/build" ]]; then
-        check_pass "Build directory exists"
+    if command -v npm &>/dev/null; then
+        check_pass "npm: $(npm --version 2>/dev/null)"
     else
-        check_fail "Build directory missing"
+        check_fail "npm: NOT FOUND"
     fi
 
+    # Check openclaw npm package
     if command -v openclaw &>/dev/null; then
-        check_pass "openclaw binary: $(command -v openclaw)"
-    elif [[ -f "${OPENCLAW_DIR}/build/openclaw" ]]; then
-        check_pass "openclaw binary: ${OPENCLAW_DIR}/build/openclaw"
-    elif [[ -f "${PREFIX}/bin/openclaw" ]]; then
-        check_pass "openclaw binary: ${PREFIX}/bin/openclaw"
+        local claw_ver
+        claw_ver=$(openclaw --version 2>/dev/null || echo "installed")
+        check_pass "openclaw: ${claw_ver} ($(command -v openclaw))"
     else
-        check_warn "openclaw binary not found in PATH"
+        check_fail "openclaw: NOT FOUND (run: npm install -g openclaw@latest)"
+    fi
+
+    # Check npm global package
+    if npm list -g openclaw &>/dev/null 2>&1; then
+        local npm_ver
+        npm_ver=$(npm list -g openclaw --depth=0 2>/dev/null | grep openclaw || echo "?")
+        check_pass "npm global: ${npm_ver}"
+    else
+        check_warn "openclaw not in npm global list"
     fi
 
     # Config
-    if [[ -f "${HOME}/.config/openclaw/config.xml" ]]; then
-        check_pass "Config: ${HOME}/.config/openclaw/config.xml"
+    if [[ -f "${HOME}/.config/openclaw/config.json" ]]; then
+        check_pass "Config: ${HOME}/.config/openclaw/config.json"
     else
         check_warn "Config file not found"
     fi
@@ -183,22 +196,17 @@ run_verification() {
     # ── 8. Patches ─────────────────────────────────────────────────────
     printf "\n${CYAN}[Patches]${NC}\n"
 
-    if [[ -f "${PREFIX}/include/termux/termux-compat.h" ]]; then
-        check_pass "termux-compat.h installed"
-    else
-        check_warn "termux-compat.h not found"
-    fi
-
     if [[ -f "${PREFIX}/bin/systemctl" ]]; then
         check_pass "systemctl stub installed"
     else
         check_warn "systemctl stub not found"
     fi
 
-    if command -v ar &>/dev/null; then
-        check_pass "ar command available"
+    local COMPAT_DIR="${PREFIX}/include/termux"
+    if [[ -d "$COMPAT_DIR" ]]; then
+        check_pass "Compat headers: ${COMPAT_DIR}"
     else
-        check_fail "ar command missing"
+        check_warn "Compat headers not found"
     fi
 
     # ── Summary ────────────────────────────────────────────────────────

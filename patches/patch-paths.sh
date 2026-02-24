@@ -44,16 +44,11 @@ patch_file() {
         local orig="${mapping%%:*}"
         local replacement="${mapping#*:}"
 
-        # Skip if already patched (contains termux path)
-        if grep -q "$replacement" "$file" 2>/dev/null; then
-            continue
-        fi
-
         # Only patch if the original path exists in the file
         if grep -q "$orig" "$file" 2>/dev/null; then
-            # Use sed to replace, but avoid replacing paths that are already
-            # part of the Termux prefix
-            sed -i "s|${orig}|${replacement}|g" "$file"
+            # Replace only paths NOT already under the Termux prefix
+            # Use negative lookbehind pattern to avoid double-patching
+            sed -i "s|\([^a-zA-Z/]\)${orig}|\1${replacement}|g; s|^${orig}|${replacement}|g" "$file"
             modified=1
         fi
     done
@@ -84,7 +79,7 @@ patch_directory() {
         if [[ -n "$find_expr" ]]; then
             find_expr="${find_expr} -o"
         fi
-        find_expr="${find_expr} -name *.${ext}"
+        find_expr="${find_expr} -name '*.${ext}'"
     done
 
     # Find and patch files

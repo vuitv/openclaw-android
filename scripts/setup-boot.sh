@@ -36,7 +36,7 @@ sshd 2>/dev/null
 # Start OpenClaw in a tmux session (if not already running)
 if ! tmux has-session -t openclaw 2>/dev/null; then
     tmux new-session -d -s openclaw -n main
-    tmux send-keys -t openclaw "cd ${HOME}/openclaw 2>/dev/null || cd ${HOME}" Enter
+    tmux send-keys -t openclaw "openclaw" Enter
 fi
 
 # Log boot start

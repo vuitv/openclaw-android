@@ -71,9 +71,9 @@ TMUXEOF
 
     # Send initial commands to the session
     if tmux has-session -t "$TMUX_SESSION" 2>/dev/null; then
-        tmux send-keys -t "$TMUX_SESSION" "cd ${HOME}/openclaw 2>/dev/null || cd ${HOME}" Enter
+        tmux send-keys -t "$TMUX_SESSION" "cd ${HOME}" Enter
         tmux send-keys -t "$TMUX_SESSION" "echo '🦞 OpenClaw tmux session ready'" Enter
-        tmux send-keys -t "$TMUX_SESSION" "echo 'Type: openclaw   to start the game'" Enter
+        tmux send-keys -t "$TMUX_SESSION" "echo 'Type: openclaw   to start'" Enter
         ok "tmux session '${TMUX_SESSION}' created"
     fi
 

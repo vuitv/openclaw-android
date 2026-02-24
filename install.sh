@@ -173,7 +173,10 @@ install_openclaw() {
 
     # Apply bionic-compat patches for Node.js
     export NODE_OPTIONS="--require=${SCRIPT_DIR}/patches/bionic-compat.js"
-    info "Bionic compatibility patches loaded via NODE_OPTIONS"
+    info "Bionic compatibility patches loaded via ${NODE_OPTIONS}"
+
+    # Fix for koffi/cnoke build system which passes empty -j to make
+    export MAKEFLAGS="-j4"
 
     # Install OpenClaw globally
     if command -v openclaw &>/dev/null; then

@@ -64,40 +64,40 @@ const childProcess = require('child_process');
 const originalSpawn = childProcess.spawn;
 const originalSpawnSync = childProcess.spawnSync;
 
-childProcess.spawn = function(command, args, options) {
-    // Fix hardcoded /usr/bin and /usr/local/bin paths
-    if (typeof command === 'string') {
-        command = command
+function fixSpawnArgs(argsArray) {
+    // argsArray is [command, args, options] or [command, options]
+    if (argsArray.length > 0 && typeof argsArray[0] === 'string') {
+        argsArray[0] = argsArray[0]
             .replace(/^\/usr\/local\/bin\//, `${PREFIX}/bin/`)
             .replace(/^\/usr\/bin\//, `${PREFIX}/bin/`)
             .replace(/^\/bin\//, `${PREFIX}/bin/`)
             .replace(/^\/sbin\//, `${PREFIX}/bin/`);
     }
-
-    // Fix PATH in environment
-    if (options && options.env && options.env.PATH) {
-        options.env.PATH = options.env.PATH
-            .replace(/\/usr\/local\/bin/g, `${PREFIX}/bin`)
-            .replace(/\/usr\/bin/g, `${PREFIX}/bin`);
+    
+    let options = null;
+    if (argsArray.length > 2) {
+        options = argsArray[2];
+    } else if (argsArray.length === 2 && !Array.isArray(argsArray[1])) {
+        options = argsArray[1];
     }
+    
+    if (options && options.env && options.env.PATH) {
+        // Use (^|:) to avoid matching /data/data/com.termux/files/usr/bin
+        options.env.PATH = options.env.PATH
+            .replace(/(^|:)\/usr\/local\/bin/g, `$1${PREFIX}/bin`)
+            .replace(/(^|:)\/usr\/bin/g, `$1${PREFIX}/bin`)
+            .replace(/(^|:)\/bin/g, `$1${PREFIX}/bin`)
+            .replace(/(^|:)\/sbin/g, `$1${PREFIX}/bin`);
+    }
+    return argsArray;
+}
 
-    return originalSpawn.apply(this, arguments);
+childProcess.spawn = function(...args) {
+    return originalSpawn.apply(this, fixSpawnArgs(args));
 };
 
-childProcess.spawnSync = function(command, args, options) {
-    if (typeof command === 'string') {
-        command = command
-            .replace(/^\/usr\/local\/bin\//, `${PREFIX}/bin/`)
-            .replace(/^\/usr\/bin\//, `${PREFIX}/bin/`)
-            .replace(/^\/bin\//, `${PREFIX}/bin/`)
-            .replace(/^\/sbin\//, `${PREFIX}/bin/`);
-    }
-    if (options && options.env && options.env.PATH) {
-        options.env.PATH = options.env.PATH
-            .replace(/\/usr\/local\/bin/g, `${PREFIX}/bin`)
-            .replace(/\/usr\/bin/g, `${PREFIX}/bin`);
-    }
-    return originalSpawnSync.apply(this, arguments);
+childProcess.spawnSync = function(...args) {
+    return originalSpawnSync.apply(this, fixSpawnArgs(args));
 };
 
 // ── Patch /tmp references in environment ───────────────────────────────────

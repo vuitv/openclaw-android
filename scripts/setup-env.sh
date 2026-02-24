@@ -39,11 +39,11 @@ export NODE_OPTIONS="-r $PATCH_DIR/bionic-compat.js"
 # Bypass systemd checks
 export CONTAINER=1
 
-# C/C++ compatibility (renameat2, RENAME_NOREPLACE)
-export CXXFLAGS="-include $PATCH_DIR/termux-compat.h"
-export CFLAGS="-include $PATCH_DIR/termux-compat.h"
-export CMAKE_CXX_FLAGS="-include $PATCH_DIR/termux-compat.h"
-export CMAKE_C_FLAGS="-include $PATCH_DIR/termux-compat.h"
+# C/C++ compatibility (renameat2, RENAME_NOREPLACE, spawn.h)
+export CXXFLAGS="-I${PREFIX}/include -include ${PREFIX}/include/termux-compat.h -include ${PREFIX}/include/spawn.h"
+export CFLAGS="-I${PREFIX}/include -include ${PREFIX}/include/termux-compat.h -include ${PREFIX}/include/spawn.h"
+export CMAKE_CXX_FLAGS="-I${PREFIX}/include -include ${PREFIX}/include/termux-compat.h -include ${PREFIX}/include/spawn.h"
+export CMAKE_C_FLAGS="-I${PREFIX}/include -include ${PREFIX}/include/termux-compat.h -include ${PREFIX}/include/spawn.h"
 
 # node-gyp OS detection override
 export GYP_DEFINES="OS=linux android_ndk_path=''"

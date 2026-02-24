@@ -43,15 +43,15 @@ MAGENTA='\033[0;35m'
 echo ""
 echo -e "${MAGENTA}${BOLD}"
 echo "  ╔═══════════════════════════════════════════════════════════╗"
-echo "  ║   🦞 OpenClaw Android Installer 🦞                      ║"
-echo "  ║   Native Termux. No proot. No bloat.                     ║"
-echo "  ║                                                          ║"
-echo "  ║   Powerful AI server running 24/7 on your Android        ║"
-echo "  ║   phone via Termux — zero dependencies.                  ║"
+echo "  ║   🦞 OpenClaw Android Installer 🦞                        ║"
+echo "  ║   Native Termux. No proot. No bloat.                      ║"
+echo "  ║                                                           ║"
+echo "  ║   Powerful AI server running 24/7 on your Android         ║"
+echo "  ║   phone via Termux — zero dependencies.                   ║"
 echo "  ╚═══════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
-echo -e "  ${CYAN}Built by ${BOLD}PsProsen-Dev & VuiTv${NC}"
-echo -e "  ${YELLOW}github.com/vuitv/openclaw-android${NC}"
+echo -e "  ${CYAN}Built by ${BOLD}VuiTv${NC}"
+echo -e "  ${YELLOW}https://github.com/vuitv/openclaw-android${NC}"
 echo ""
 
 # ──────────────────────────────────────────────
@@ -85,20 +85,20 @@ mkdir -p "$PATCH_DEST"
 cp "$SCRIPT_DIR/patches/bionic-compat.js" "$PATCH_DEST/"
 cp "$SCRIPT_DIR/patches/termux-compat.h"  "$PATCH_DEST/"
 
-# Copy spawn.h if missing
-if [ ! -f "$PREFIX/include/spawn.h" ]; then
-  cp "$SCRIPT_DIR/patches/spawn.h" "$PREFIX/include/spawn.h"
-  log_ok "spawn.h installed"
-fi
+# Install C/C++ compat headers to $PREFIX/include so compiler can find them
+log_info "Installing C/C++ compatibility headers..."
+cp "$SCRIPT_DIR/patches/termux-compat.h" "$PREFIX/include/termux-compat.h"
+cp "$SCRIPT_DIR/patches/spawn.h" "$PREFIX/include/spawn.h"
+log_ok "compat headers installed"
 
 source ~/.bashrc 2>/dev/null || true
 
 # Set build flags for native compilation
 export MAKEFLAGS="-j4"
-export CFLAGS="-I${PREFIX}/include/termux"
-export CXXFLAGS="-I${PREFIX}/include/termux"
-export CMAKE_C_FLAGS="-I${PREFIX}/include/termux"
-export CMAKE_CXX_FLAGS="-I${PREFIX}/include/termux"
+export CFLAGS="-I${PREFIX}/include -include ${PREFIX}/include/termux-compat.h -include ${PREFIX}/include/spawn.h"
+export CXXFLAGS="-I${PREFIX}/include -include ${PREFIX}/include/termux-compat.h -include ${PREFIX}/include/spawn.h"
+export CMAKE_C_FLAGS="-I${PREFIX}/include -include ${PREFIX}/include/termux-compat.h -include ${PREFIX}/include/spawn.h"
+export CMAKE_CXX_FLAGS="-I${PREFIX}/include -include ${PREFIX}/include/termux-compat.h -include ${PREFIX}/include/spawn.h"
 
 log_info "Installing OpenClaw (this may take 5-15 minutes)..."
 if npm install -g openclaw@latest; then
@@ -199,9 +199,9 @@ IP=$(ip -4 addr show wlan0 2>/dev/null | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | h
 echo ""
 echo -e "${MAGENTA}${BOLD}"
 echo "  ╔═══════════════════════════════════════════════════════════╗"
-echo "  ║                                                          ║"
-echo "  ║   🦞 OpenClaw Android IS READY! 🦞                      ║"
-echo "  ║                                                          ║"
+echo "  ║                                                           ║"
+echo "  ║   🦞 OpenClaw Android IS READY! 🦞                        ║"
+echo "  ║                                                           ║"
 echo "  ╚═══════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
 echo -e "  ${GREEN}Gateway  : ${BOLD}Running in tmux session 'OpenClaw'${NC}"
@@ -209,7 +209,7 @@ echo ""
 echo -e "  ${BOLD}SSH Command (copy-paste on your PC):${NC}"
 echo -e "  ${CYAN}${BOLD}ssh -p 8022 ${USER_NAME}@${IP}${NC}"
 echo ""
-echo -e "  ${GREEN}Password : ${BOLD}${SSH_PASSWORD}${NC} ${YELLOW}(change dengan: passwd)${NC}"
+echo -e "  ${GREEN}Password : ${BOLD}${SSH_PASSWORD}${NC} ${YELLOW}(change with: passwd)${NC}"
 echo ""
 echo -e "  ${BOLD}Useful Commands:${NC}"
 echo -e "  ${YELLOW}tmux attach -t OpenClaw${NC}    — View gateway logs"

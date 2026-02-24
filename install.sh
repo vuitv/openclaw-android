@@ -153,12 +153,17 @@ install_openclaw() {
     info "Installing OpenClaw via npm..."
     info "Repository: https://github.com/openclaw/openclaw"
 
-    # Check Node.js and npm are available
+    # Check Node.js, npm, and git are available
     if ! command -v node &>/dev/null; then
         error "Node.js not found. Run: pkg install nodejs"
     fi
     if ! command -v npm &>/dev/null; then
         error "npm not found. Run: pkg install nodejs"
+    fi
+    if ! command -v git &>/dev/null; then
+        info "git not found — installing..."
+        pkg install -y git 2>/dev/null || apt install -y git || \
+            error "Failed to install git. Run: pkg install git"
     fi
 
     local NODE_VER
